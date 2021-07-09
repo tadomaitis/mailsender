@@ -1,4 +1,4 @@
-.runtimeconfig.json
 node_modules
 .env
+.runtimeconfig.json
 ui-debug.log
