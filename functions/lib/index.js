@@ -5,24 +5,45 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer_1 = require("nodemailer");
 const cors = require("cors");
+const googleapis_1 = require("googleapis");
 admin.initializeApp();
 const corsHandler = cors({ origin: true });
-const EMAIL_HOST = functions.config().email.host;
+const OAuth2 = googleapis_1.google.auth.OAuth2;
+const OAUTH_URI = 'https://developers.google.com/oauthplayground';
+const CLIENT_ID = functions.config().email.client_id;
+const CLIENT_SECRET = functions.config().email.client_secret;
+const REFRESH_TOKEN = functions.config().email.refresh_token;
 const EMAIL_ACCOUNT = functions.config().email.account;
-const EMAIL_PORT = functions.config().email.port;
-const PASSWORD = functions.config().email.password;
-const transporter = nodemailer_1.createTransport({
-    host: EMAIL_HOST,
-    port: EMAIL_PORT,
-    secure: true,
-    auth: {
-        user: EMAIL_ACCOUNT,
-        pass: PASSWORD
-    }
-});
 exports.sendMail = functions.https.onRequest((req, res) => {
-    corsHandler(req, res, () => {
-        const mailData = {
+    corsHandler(req, res, async () => {
+        const createTransporter = async () => {
+            const oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, OAUTH_URI);
+            oauth2Client.setCredentials({
+                refresh_token: REFRESH_TOKEN
+            });
+            const accessToken = await new Promise((resolve, reject) => {
+                oauth2Client.getAccessToken((err, token) => {
+                    if (err) {
+                        reject(new Error(`Failed to create access token: ${err}`));
+                    }
+                    resolve(token);
+                });
+            });
+            const transporter = nodemailer_1.createTransport({
+                // @ts-ignore
+                service: 'gmail',
+                auth: {
+                    type: 'OAuth2',
+                    user: EMAIL_ACCOUNT,
+                    accessToken,
+                    clientId: CLIENT_ID,
+                    clientSecret: CLIENT_SECRET,
+                    refreshToken: REFRESH_TOKEN
+                }
+            });
+            return transporter;
+        };
+        const emailOptions = {
             from: `${req.body.email}`,
             to: 't.d.adomaitis@gmail.com',
             subject: `Mensagem recebida no site de ${req.body.name}`,
@@ -33,16 +54,12 @@ exports.sendMail = functions.https.onRequest((req, res) => {
           <div>${req.body.message}</div>
         `
         };
-        transporter.sendMail(mailData, err => {
-            if (err) {
-                console.log(err);
-                return res
-                    .status(500)
-                    .send(err.toString())
-                    .end();
-            }
-            return res.status(200).end();
-        });
+        const sendEmail = async (emailOptions) => {
+            const emailTransporter = await createTransporter();
+            await emailTransporter.sendMail(emailOptions);
+        };
+        sendEmail(emailOptions);
+        return res.status(200).end();
     });
 });
 //# sourceMappingURL=index.js.map
