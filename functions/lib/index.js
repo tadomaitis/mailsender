@@ -15,7 +15,7 @@ const CLIENT_SECRET = functions.config().email.client_secret;
 const REFRESH_TOKEN = functions.config().email.refresh_token;
 const EMAIL_ACCOUNT = functions.config().email.account;
 exports.sendMail = functions.https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
+    corsHandler(req, res, () => {
         const createTransporter = async () => {
             const oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, OAUTH_URI);
             oauth2Client.setCredentials({
@@ -29,7 +29,7 @@ exports.sendMail = functions.https.onRequest((req, res) => {
                     resolve(token);
                 });
             });
-            const transporter = nodemailer_1.createTransport({
+            const transporter = (0, nodemailer_1.createTransport)({
                 // @ts-ignore
                 service: 'gmail',
                 auth: {

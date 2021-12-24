@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin'
 import { createTransport } from 'nodemailer'
 import * as cors from 'cors'
 import { google } from 'googleapis'
+import { Request, Response } from 'firebase-functions/node_modules/@types/express'
 
 admin.initializeApp()
 const corsHandler = cors({ origin: true })
@@ -16,14 +17,17 @@ interface EmailOptions {
 }
 
 const OAuth2 = google.auth.OAuth2
-const OAUTH_URI = 'https://developers.google.com/oauthplayground'
+const OAUTH_URI = functions.config().api.adress
 const CLIENT_ID = functions.config().email.client_id
 const CLIENT_SECRET = functions.config().email.client_secret
 const REFRESH_TOKEN = functions.config().email.refresh_token
 const EMAIL_ACCOUNT = functions.config().email.account
+const DESTINATION_ADDRESS = functions.config().email.destination_address
 
-export const sendMail = functions.https.onRequest((req, res) => {
-  corsHandler(req, res, async () => {
+export const sendMail = functions.https.onRequest((req: Request, res: Response) => {
+  corsHandler(req, res, () => {
+    const { email, name, message } = req.body
+
     const createTransporter = async () => {
       const oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, OAUTH_URI)
 
@@ -56,14 +60,14 @@ export const sendMail = functions.https.onRequest((req, res) => {
     }
 
     const emailOptions: EmailOptions = {
-      from: `${req.body.email}`,
-      to: 't.d.adomaitis@gmail.com',
-      subject: `Mensagem recebida no site de ${req.body.name}`,
-      text: req.body.message,
+      from: `${email}`,
+      to: DESTINATION_ADDRESS,
+      subject: `Mensagem de ${name}, enviada pelo site:`,
+      text: message,
       html: `
-          <p>Mensagem de: ${req.body.name}</p>
-          <p>Responder para: ${req.body.email}</p>
-          <div>${req.body.message}</div>
+          <p>Mensagem de: ${name}</p>
+          <p>Responder para: ${email}</p>
+          <div>${message}</div>
         `
     }
 
